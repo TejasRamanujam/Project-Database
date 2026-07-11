@@ -686,10 +686,11 @@ kbd {
 
 .problem p {
   margin: 10px 0 0;
-  font-family: var(--serif);
-  font-size: clamp(19px, 2.6vw, 24px);
-  line-height: 1.4;
-  max-width: 30em;
+  font-family: var(--sans);
+  font-weight: 480;
+  font-size: clamp(17px, 2.2vw, 20px);
+  line-height: 1.55;
+  max-width: 34em;
 }
 
 .dossier-desc {
