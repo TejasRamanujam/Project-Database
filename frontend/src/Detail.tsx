@@ -13,6 +13,7 @@ interface Props {
   listLoading: boolean
   prev: Project | null
   next: Project | null
+  catalogue: Project[]
 }
 
 function RailSection({ label, children }: { label: string; children: React.ReactNode }) {
@@ -64,6 +65,81 @@ function PlanPhases({ phases }: { phases: PlanPhase[] }) {
         )
       })}
     </>
+  )
+}
+
+function shared(left: string[], right: string[]) {
+  return left.filter((item) => right.includes(item))
+}
+
+function ComparisonDesk({
+  current,
+  catalogue,
+  initial,
+}: {
+  current: Project
+  catalogue: Project[]
+  initial: Project | null
+}) {
+  const alternatives = catalogue.filter((candidate) => candidate.id !== current.id)
+  const [comparisonId, setComparisonId] = useState(initial?.id ?? alternatives[0]?.id ?? 0)
+  const comparison = alternatives.find((candidate) => candidate.id === comparisonId) ?? alternatives[0]
+  if (!comparison) return null
+
+  const sharedTags = shared(current.tags, comparison.tags)
+  const sharedStack = shared(current.tech_stack, comparison.tech_stack)
+  const currentPhases = parsePlan(current.build_plan).length
+  const comparisonPhases = parsePlan(comparison.build_plan).length
+
+  return (
+    <section className="comparison-desk" aria-labelledby="comparison-title">
+      <div className="comparison-head">
+        <div>
+          <span className="comparison-kicker">Decision plate</span>
+          <h2 id="comparison-title">Compare specimens</h2>
+        </div>
+        <label className="comparison-picker">
+          <span>Set beside № {pad(current.id)}</span>
+          <select
+            value={comparison.id}
+            onChange={(event) => setComparisonId(Number(event.target.value))}
+            aria-label="Comparison specimen"
+          >
+            {alternatives.map((candidate) => (
+              <option value={candidate.id} key={candidate.id}>
+                № {pad(candidate.id)} — {candidate.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="comparison-grid">
+        {[current, comparison].map((candidate) => (
+          <article className="comparison-column" key={candidate.id}>
+            <span className="comparison-no">№ {pad(candidate.id)}</span>
+            <h3>{candidate.title}</h3>
+            <span className="stamp" data-diff={slug(candidate.difficulty)}>{candidate.difficulty}</span>
+            <dl>
+              <div><dt>Build plan</dt><dd>{candidate.id === current.id ? currentPhases : comparisonPhases} phases</dd></div>
+              <div><dt>Stack</dt><dd>{candidate.tech_stack.slice(0, 5).join(' · ')}</dd></div>
+              <div><dt>Architecture</dt><dd>{candidate.architectures_used.slice(0, 3).join(' · ')}</dd></div>
+              <div><dt>Career signal</dt><dd>{candidate.resume_gap_filled}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <div className="comparison-overlap">
+        <span>Shared ground</span>
+        <strong>{sharedTags.length} taxonomies · {sharedStack.length} stack choices</strong>
+        <p>
+          {sharedTags.length ? sharedTags.join(' · ') : 'Distinct problem domains'}
+          {sharedStack.length ? ` / ${sharedStack.join(' · ')}` : ''}
+        </p>
+        <a href={`#/p/${comparison.id}`}>Open specimen № {pad(comparison.id)} →</a>
+      </div>
+    </section>
   )
 }
 
@@ -123,7 +199,7 @@ function TailorPlan({ projectId }: { projectId: number }) {
   )
 }
 
-export function Detail({ id, project, listLoading, prev, next }: Props) {
+export function Detail({ id, project, listLoading, prev, next, catalogue }: Props) {
   const [fetched, setFetched] = useState<Project | null>(null)
   const [missing, setMissing] = useState(false)
 
@@ -174,6 +250,21 @@ export function Detail({ id, project, listLoading, prev, next }: Props) {
 
   const phases = parsePlan(p.build_plan)
   const d = slug(p.difficulty)
+  const related = catalogue
+    .filter((candidate) => candidate.id !== p.id)
+    .map((candidate) => ({
+      project: candidate,
+      shared: candidate.tags.filter((tag) => p.tags.includes(tag)).length,
+      sameGrade: candidate.difficulty === p.difficulty ? 1 : 0,
+      distance: Math.abs(candidate.id - p.id),
+    }))
+    .sort((left, right) =>
+      right.shared - left.shared ||
+      right.sameGrade - left.sameGrade ||
+      left.distance - right.distance ||
+      left.project.id - right.project.id
+    )
+    .slice(0, 3)
 
   return (
     <main className="dossier" data-diff={d}>
@@ -279,6 +370,32 @@ export function Detail({ id, project, listLoading, prev, next }: Props) {
           </RailSection>
         </aside>
       </div>
+
+      <ComparisonDesk
+        key={p.id}
+        current={p}
+        catalogue={catalogue}
+        initial={related[0]?.project ?? null}
+      />
+
+      {related.length > 0 && (
+        <section className="related-specimens" aria-labelledby="related-specimens-title">
+          <h2 className="sec-label" id="related-specimens-title">Related specimens</h2>
+          <div className="related-grid">
+            {related.map(({ project: candidate, shared }) => (
+              <a className="related-card" href={`#/p/${candidate.id}`} key={candidate.id}>
+                <span className="related-no">№ {pad(candidate.id)}</span>
+                <strong>{candidate.title}</strong>
+                <span className="stamp" data-diff={slug(candidate.difficulty)}>{candidate.difficulty}</span>
+                <span className="related-tags">{candidate.tags.join(' · ')}</span>
+                <span className="related-reason">
+                  {shared > 0 ? `${shared} shared ${shared === 1 ? 'taxonomy' : 'taxonomies'}` : 'adjacent in the catalogue'}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       <nav className="dossier-nav" aria-label="Adjacent specimens">
         {prev ? (

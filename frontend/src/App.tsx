@@ -20,6 +20,7 @@ export default function App() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [allDiffs, setAllDiffs] = useState<string[]>([])
   const [projects, setProjects] = useState<Project[] | null>(null)
+  const [catalogue, setCatalogue] = useState<Project[]>([])
   const [total, setTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -71,6 +72,7 @@ export default function App() {
       .then((data) => {
         if (seq.current !== id) return
         setProjects(data)
+        if (!debounced && !tags.length && !diffs.length) setCatalogue(data)
         setError(false)
         setLoading(false)
         if (firstLoad.current && !debounced && !tags.length && !diffs.length) {
@@ -169,6 +171,7 @@ export default function App() {
               ? projects[detailIdx + 1]
               : null
           }
+          catalogue={catalogue.length ? catalogue : projects ?? []}
         />
       ) : (
         <main>

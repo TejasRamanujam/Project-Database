@@ -26,12 +26,6 @@ class ProjectResponse(ProjectBase):
     model_config = {"from_attributes": True}
 
 
-class SearchParams(BaseModel):
-    query: Optional[str] = ""
-    tags: Optional[List[str]] = None
-    difficulty: Optional[List[str]] = None
-
-
 class TailorRequest(BaseModel):
     constraint: str
 
